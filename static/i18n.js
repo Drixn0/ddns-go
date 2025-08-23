@@ -214,6 +214,26 @@ const I18N_MAP = {
     'en': '<span style="color: red">No available network card found</span>',
     'zh-cn': '<span style="color: red">没有找到可用的网卡</span>'
   },
+  "Frequency Settings": {
+    'en': 'Frequency Settings',
+    'zh-cn': '频率设置'
+  },
+  "API Frequency (seconds)": {
+    'en': 'API Frequency (seconds)',
+    'zh-cn': 'API频率(秒)'
+  },
+  "Network Card Frequency (seconds)": {
+    'en': 'Network Card Frequency (seconds)',
+    'zh-cn': '网卡频率(秒)'
+  },
+  "Command Frequency (seconds)": {
+    'en': 'Command Frequency (seconds)',
+    'zh-cn': '命令频率(秒)'
+  },
+  "FrequencyHelp": {
+    'en': 'Set to 0 to use global frequency. Network card method can run more frequently (e.g., 30s) while API calls can be less frequent (e.g., 600s) to avoid rate limiting.',
+    'zh-cn': '设置为0使用全局频率。网卡方式可以更频繁运行(如30秒)，而API调用可以较低频率(如600秒)以避免频率限制。'
+  },
   "Login": {
     'en': 'Login',
     'zh-cn': '登录'

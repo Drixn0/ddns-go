@@ -92,6 +92,9 @@ func checkAndSave(request *http.Request) string {
 		dnsConf.Ipv4.NetInterface = v.Ipv4NetInterface
 		dnsConf.Ipv4.Cmd = strings.TrimSpace(v.Ipv4Cmd)
 		dnsConf.Ipv4.Domains = util.SplitLines(v.Ipv4Domains)
+		dnsConf.Ipv4.URLFrequency = v.Ipv4URLFrequency
+		dnsConf.Ipv4.NetInterfaceFrequency = v.Ipv4NetInterfaceFrequency
+		dnsConf.Ipv4.CmdFrequency = v.Ipv4CmdFrequency
 
 		dnsConf.Ipv6.Enable = v.Ipv6Enable
 		dnsConf.Ipv6.GetType = v.Ipv6GetType
@@ -100,6 +103,9 @@ func checkAndSave(request *http.Request) string {
 		dnsConf.Ipv6.Cmd = strings.TrimSpace(v.Ipv6Cmd)
 		dnsConf.Ipv6.Ipv6Reg = strings.TrimSpace(v.Ipv6Reg)
 		dnsConf.Ipv6.Domains = util.SplitLines(v.Ipv6Domains)
+		dnsConf.Ipv6.URLFrequency = v.Ipv6URLFrequency
+		dnsConf.Ipv6.NetInterfaceFrequency = v.Ipv6NetInterfaceFrequency
+		dnsConf.Ipv6.CmdFrequency = v.Ipv6CmdFrequency
 
 		if k < len(conf.DnsConf) {
 			c := &conf.DnsConf[k]

@@ -336,6 +336,58 @@
                     ></small>
                   </div>
                 </div>
+
+                <div class="form-group row">
+                  <label for="Ipv4Frequency" class="col-sm-2 col-form-label">
+                    <span data-i18n="Frequency Settings">Frequency Settings</span>
+                  </label>
+                  <div class="col-sm-10">
+                    <div class="row">
+                      <div class="col-sm-4">
+                        <label for="Ipv4URLFrequency" class="form-label">
+                          <small data-i18n="API Frequency (seconds)">API Frequency (seconds)</small>
+                        </label>
+                        <input
+                          type="number"
+                          class="form-control form-control-sm"
+                          id="Ipv4URLFrequency"
+                          name="Ipv4URLFrequency"
+                          min="0"
+                          placeholder="0 (use global)"
+                        />
+                      </div>
+                      <div class="col-sm-4">
+                        <label for="Ipv4NetInterfaceFrequency" class="form-label">
+                          <small data-i18n="Network Card Frequency (seconds)">Network Card Frequency (seconds)</small>
+                        </label>
+                        <input
+                          type="number"
+                          class="form-control form-control-sm"
+                          id="Ipv4NetInterfaceFrequency"
+                          name="Ipv4NetInterfaceFrequency"
+                          min="0"
+                          placeholder="0 (use global)"
+                        />
+                      </div>
+                      <div class="col-sm-4">
+                        <label for="Ipv4CmdFrequency" class="form-label">
+                          <small data-i18n="Command Frequency (seconds)">Command Frequency (seconds)</small>
+                        </label>
+                        <input
+                          type="number"
+                          class="form-control form-control-sm"
+                          id="Ipv4CmdFrequency"
+                          name="Ipv4CmdFrequency"
+                          min="0"
+                          placeholder="0 (use global)"
+                        />
+                      </div>
+                    </div>
+                    <small class="form-text text-muted">
+                      <span data-i18n="FrequencyHelp">Set to 0 to use global frequency. Network card method can run more frequently (e.g., 30s) while API calls can be less frequent (e.g., 600s) to avoid rate limiting.</span>
+                    </small>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -514,6 +566,58 @@
                       id="ipv6_domainsHelp"
                       class="form-text text-muted"
                     ></small>
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label for="Ipv6Frequency" class="col-sm-2 col-form-label">
+                    <span data-i18n="Frequency Settings">Frequency Settings</span>
+                  </label>
+                  <div class="col-sm-10">
+                    <div class="row">
+                      <div class="col-sm-4">
+                        <label for="Ipv6URLFrequency" class="form-label">
+                          <small data-i18n="API Frequency (seconds)">API Frequency (seconds)</small>
+                        </label>
+                        <input
+                          type="number"
+                          class="form-control form-control-sm"
+                          id="Ipv6URLFrequency"
+                          name="Ipv6URLFrequency"
+                          min="0"
+                          placeholder="0 (use global)"
+                        />
+                      </div>
+                      <div class="col-sm-4">
+                        <label for="Ipv6NetInterfaceFrequency" class="form-label">
+                          <small data-i18n="Network Card Frequency (seconds)">Network Card Frequency (seconds)</small>
+                        </label>
+                        <input
+                          type="number"
+                          class="form-control form-control-sm"
+                          id="Ipv6NetInterfaceFrequency"
+                          name="Ipv6NetInterfaceFrequency"
+                          min="0"
+                          placeholder="0 (use global)"
+                        />
+                      </div>
+                      <div class="col-sm-4">
+                        <label for="Ipv6CmdFrequency" class="form-label">
+                          <small data-i18n="Command Frequency (seconds)">Command Frequency (seconds)</small>
+                        </label>
+                        <input
+                          type="number"
+                          class="form-control form-control-sm"
+                          id="Ipv6CmdFrequency"
+                          name="Ipv6CmdFrequency"
+                          min="0"
+                          placeholder="0 (use global)"
+                        />
+                      </div>
+                    </div>
+                    <small class="form-text text-muted">
+                      <span data-i18n="FrequencyHelp">Set to 0 to use global frequency. Network card method can run more frequently (e.g., 30s) while API calls can be less frequent (e.g., 600s) to avoid rate limiting.</span>
+                    </small>
                   </div>
                 </div>
               </div>
@@ -749,6 +853,9 @@
         "en": "https://api.ipify.org, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson",
         "zh-cn": "https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson",
       }),
+      Ipv4URLFrequency: 0,
+      Ipv4NetInterfaceFrequency: 0,
+      Ipv4CmdFrequency: 0,
       Ipv6Cmd: "",
       Ipv6Domains: "",
       Ipv6Enable: true,
@@ -759,6 +866,9 @@
         "en": "https://api64.ipify.org, https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson",
         "zh-cn": "https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson",
       }),
+      Ipv6URLFrequency: 0,
+      Ipv6NetInterfaceFrequency: 0,
+      Ipv6CmdFrequency: 0,
       TTL: "",
     };
   </script>
