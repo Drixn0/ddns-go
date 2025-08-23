@@ -91,33 +91,43 @@ func (domains *Domains) GetNewIp(dnsConf *DnsConfig) {
 
 	// IPv4
 	if dnsConf.Ipv4.Enable && len(domains.Ipv4Domains) > 0 {
-		ipv4Addr := dnsConf.GetIpv4Addr()
-		if ipv4Addr != "" {
-			domains.Ipv4Addr = ipv4Addr
-			domains.Ipv4Cache.TimesFailedIP = 0
-		} else {
-			// 启用IPv4 & 未获取到IP & 填写了域名 & 失败刚好3次，防止偶尔的网络连接失败，并且只发一次
-			domains.Ipv4Cache.TimesFailedIP++
-			if domains.Ipv4Cache.TimesFailedIP == 3 {
-				domains.Ipv4Domains[0].UpdateStatus = UpdatedFailed
+		// 检查IPv4获取频率
+		if dnsConf.shouldRunMethod(dnsConf.Ipv4.GetType, "ipv4", GlobalFrequency) {
+			ipv4Addr := dnsConf.GetIpv4Addr()
+			if ipv4Addr != "" {
+				domains.Ipv4Addr = ipv4Addr
+				domains.Ipv4Cache.TimesFailedIP = 0
+				// 更新运行时间
+				dnsConf.updateMethodRunTime(dnsConf.Ipv4.GetType, "ipv4")
+			} else {
+				// 启用IPv4 & 未获取到IP & 填写了域名 & 失败刚好3次，防止偶尔的网络连接失败，并且只发一次
+				domains.Ipv4Cache.TimesFailedIP++
+				if domains.Ipv4Cache.TimesFailedIP == 3 {
+					domains.Ipv4Domains[0].UpdateStatus = UpdatedFailed
+				}
+				util.Log("未能获取IPv4地址, 将不会更新")
 			}
-			util.Log("未能获取IPv4地址, 将不会更新")
 		}
 	}
 
 	// IPv6
 	if dnsConf.Ipv6.Enable && len(domains.Ipv6Domains) > 0 {
-		ipv6Addr := dnsConf.GetIpv6Addr()
-		if ipv6Addr != "" {
-			domains.Ipv6Addr = ipv6Addr
-			domains.Ipv6Cache.TimesFailedIP = 0
-		} else {
-			// 启用IPv6 & 未获取到IP & 填写了域名 & 失败刚好3次，防止偶尔的网络连接失败，并且只发一次
-			domains.Ipv6Cache.TimesFailedIP++
-			if domains.Ipv6Cache.TimesFailedIP == 3 {
-				domains.Ipv6Domains[0].UpdateStatus = UpdatedFailed
+		// 检查IPv6获取频率
+		if dnsConf.shouldRunMethod(dnsConf.Ipv6.GetType, "ipv6", GlobalFrequency) {
+			ipv6Addr := dnsConf.GetIpv6Addr()
+			if ipv6Addr != "" {
+				domains.Ipv6Addr = ipv6Addr
+				domains.Ipv6Cache.TimesFailedIP = 0
+				// 更新运行时间
+				dnsConf.updateMethodRunTime(dnsConf.Ipv6.GetType, "ipv6")
+			} else {
+				// 启用IPv6 & 未获取到IP & 填写了域名 & 失败刚好3次，防止偶尔的网络连接失败，并且只发一次
+				domains.Ipv6Cache.TimesFailedIP++
+				if domains.Ipv6Cache.TimesFailedIP == 3 {
+					domains.Ipv6Domains[0].UpdateStatus = UpdatedFailed
+				}
+				util.Log("未能获取IPv6地址, 将不会更新")
 			}
-			util.Log("未能获取IPv6地址, 将不会更新")
 		}
 	}
 

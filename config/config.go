@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jeessy2/ddns-go/v6/util"
 	passwordvalidator "github.com/wagslane/go-password-validator"
@@ -23,6 +24,29 @@ var Ipv4Reg = regexp.MustCompile(`((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3
 // Ipv6Reg IPv6正则
 var Ipv6Reg = regexp.MustCompile(`((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))`)
 
+// FrequencyTracker 频率跟踪器，用于跟踪不同获取方式的执行时间
+type FrequencyTracker struct {
+	Ipv4URLLastRun          time.Time
+	Ipv4NetInterfaceLastRun time.Time
+	Ipv4CmdLastRun          time.Time
+	Ipv6URLLastRun          time.Time
+	Ipv6NetInterfaceLastRun time.Time
+	Ipv6CmdLastRun          time.Time
+	mutex                   sync.RWMutex
+}
+
+// Global frequency tracker for all DNS configurations
+var frequencyTrackers = make(map[string]*FrequencyTracker)
+var frequencyMutex sync.RWMutex
+
+// Global frequency in seconds (set by main)
+var GlobalFrequency int = 300
+
+// SetGlobalFrequency 设置全局频率
+func SetGlobalFrequency(frequency int) {
+	GlobalFrequency = frequency
+}
+
 // DnsConfig 配置
 type DnsConfig struct {
 	Name string
@@ -34,6 +58,10 @@ type DnsConfig struct {
 		NetInterface string
 		Cmd          string
 		Domains      []string
+		// 获取频率配置(秒)，0表示使用全局频率
+		URLFrequency          int `yaml:"URLFrequency,omitempty"`          // URL接口获取频率
+		NetInterfaceFrequency int `yaml:"NetInterfaceFrequency,omitempty"` // 网卡获取频率
+		CmdFrequency          int `yaml:"CmdFrequency,omitempty"`          // 命令获取频率
 	}
 	Ipv6 struct {
 		Enable bool
@@ -44,6 +72,10 @@ type DnsConfig struct {
 		Cmd          string
 		Ipv6Reg      string // ipv6匹配正则表达式
 		Domains      []string
+		// 获取频率配置(秒)，0表示使用全局频率
+		URLFrequency          int `yaml:"URLFrequency,omitempty"`          // URL接口获取频率
+		NetInterfaceFrequency int `yaml:"NetInterfaceFrequency,omitempty"` // 网卡获取频率
+		CmdFrequency          int `yaml:"CmdFrequency,omitempty"`          // 命令获取频率
 	}
 	DNS DNS
 	TTL string
@@ -55,6 +87,108 @@ type DNS struct {
 	Name   string
 	ID     string
 	Secret string
+}
+
+// getFrequencyTracker 获取或创建频率跟踪器
+func getFrequencyTracker(configName string) *FrequencyTracker {
+	frequencyMutex.Lock()
+	defer frequencyMutex.Unlock()
+	
+	if tracker, exists := frequencyTrackers[configName]; exists {
+		return tracker
+	}
+	
+	tracker := &FrequencyTracker{}
+	frequencyTrackers[configName] = tracker
+	return tracker
+}
+
+// ShouldRunMethod 检查指定方法是否应该运行 (public method for testing)
+func (conf *DnsConfig) ShouldRunMethod(methodType string, ipVersion string, globalFrequency int) bool {
+	return conf.shouldRunMethod(methodType, ipVersion, globalFrequency)
+}
+
+// UpdateMethodRunTime 更新方法的运行时间 (public method for testing)
+func (conf *DnsConfig) UpdateMethodRunTime(methodType string, ipVersion string) {
+	conf.updateMethodRunTime(methodType, ipVersion)
+}
+
+// shouldRunMethod 检查指定方法是否应该运行
+func (conf *DnsConfig) shouldRunMethod(methodType string, ipVersion string, globalFrequency int) bool {
+	tracker := getFrequencyTracker(conf.Name)
+	tracker.mutex.RLock()
+	defer tracker.mutex.RUnlock()
+	
+	now := time.Now()
+	var lastRun time.Time
+	var frequency int
+	
+	// 根据IP版本和方法类型获取最后运行时间和频率
+	switch ipVersion {
+	case "ipv4":
+		switch methodType {
+		case "url":
+			lastRun = tracker.Ipv4URLLastRun
+			frequency = conf.Ipv4.URLFrequency
+		case "netInterface":
+			lastRun = tracker.Ipv4NetInterfaceLastRun
+			frequency = conf.Ipv4.NetInterfaceFrequency
+		case "cmd":
+			lastRun = tracker.Ipv4CmdLastRun
+			frequency = conf.Ipv4.CmdFrequency
+		}
+	case "ipv6":
+		switch methodType {
+		case "url":
+			lastRun = tracker.Ipv6URLLastRun
+			frequency = conf.Ipv6.URLFrequency
+		case "netInterface":
+			lastRun = tracker.Ipv6NetInterfaceLastRun
+			frequency = conf.Ipv6.NetInterfaceFrequency
+		case "cmd":
+			lastRun = tracker.Ipv6CmdLastRun
+			frequency = conf.Ipv6.CmdFrequency
+		}
+	}
+	
+	// 如果频率为0，使用全局频率
+	if frequency == 0 {
+		frequency = globalFrequency
+	}
+	
+	// 检查是否到了执行时间
+	return now.Sub(lastRun) >= time.Duration(frequency)*time.Second
+}
+
+// updateMethodRunTime 更新方法的运行时间
+func (conf *DnsConfig) updateMethodRunTime(methodType string, ipVersion string) {
+	tracker := getFrequencyTracker(conf.Name)
+	tracker.mutex.Lock()
+	defer tracker.mutex.Unlock()
+	
+	now := time.Now()
+	
+	// 根据IP版本和方法类型更新最后运行时间
+	switch ipVersion {
+	case "ipv4":
+		switch methodType {
+		case "url":
+			tracker.Ipv4URLLastRun = now
+		case "netInterface":
+			tracker.Ipv4NetInterfaceLastRun = now
+		case "cmd":
+			tracker.Ipv4CmdLastRun = now
+		}
+	case "ipv6":
+		switch methodType {
+		case "url":
+			tracker.Ipv6URLLastRun = now
+		case "netInterface":
+			tracker.Ipv6NetInterfaceLastRun = now
+		case "cmd":
+			tracker.Ipv6CmdLastRun = now
+		}
+	}
 }
 
 type Config struct {

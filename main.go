@@ -166,6 +166,9 @@ func run() {
 	// 等待网络连接
 	util.WaitInternet(dns.Addresses)
 
+	// 设置全局频率
+	config.SetGlobalFrequency(*every)
+
 	// 定时运行
 	dns.RunTimer(time.Duration(*every) * time.Second)
 }
