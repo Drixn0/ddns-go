@@ -1,82 +1,57 @@
 name: 监测原仓库新Release并触发发布
 on:
-  cron: '0 * * * *'  # 每小时检查一次（可调整，如每天：'0 7 * * *'）
-  workflow_dispatch:  # 允许手动触发测试
+  schedule:  # 注意：定时任务必须放在 schedule 字段下，而非直接写 cron
+    - cron: '0 * * * *'  # 每小时检查一次（正确缩进：比 on 多 2 个空格）
+  workflow_dispatch:  # 允许手动触发（与 schedule 同级）
 
 jobs:
   monitor-and-trigger:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 需权限创建标签、推送代码
+      contents: write
     steps:
-      ########################################################################
-      # 步骤1：检出自己的仓库（用于创建标签）
-      ########################################################################
       - name: 检出仓库
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # 拉取完整历史，确保能读取已有标签
+          fetch-depth: 0
 
-      ########################################################################
-      # 步骤2：获取原仓库的最新Release标签
-      ########################################################################
       - name: 获取原仓库最新Release标签
         id: get_upstream_release
         env:
-          UPSTREAM_OWNER: 'jeessy2'  # 🔴 改为原仓库作者（如jeessy2）
-          UPSTREAM_REPO: 'ddns-go'       # 🔴 改为原仓库名称（如ddns-go）
+          UPSTREAM_OWNER: '原仓库拥有者'  # 替换为实际值
+          UPSTREAM_REPO: '原仓库名'       # 替换为实际值
         run: |
-          # 调用GitHub API获取原仓库最新Release（公开仓库无需认证）
           RESPONSE=$(curl -s "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
-
-          # 解析API响应，提取标签名（若原仓库无Release，会返回404，此处处理为无标签）
           UPSTREAM_TAG=$(echo "$RESPONSE" | jq -r '.tag_name')
-
-          # 验证标签格式（确保是v*格式，避免非版本标签）
           if [[ $UPSTREAM_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
-            echo "检测到原仓库最新Release标签：$UPSTREAM_TAG"
             echo "upstream_tag=$UPSTREAM_TAG" >> $GITHUB_OUTPUT
           else
-            echo "原仓库无有效Release标签（或格式不符合v*），标签值：$UPSTREAM_TAG"
-            echo "upstream_tag=" >> $GITHUB_OUTPUT  # 输出空值，后续步骤会跳过
+            echo "upstream_tag=" >> $GITHUB_OUTPUT
           fi
 
-      ########################################################################
-      # 步骤3：读取本地缓存的上次检测到的标签（用于对比是否有新Release）
-      ########################################################################
       - name: 读取上次检测到的标签缓存
         id: cache_last_tag
         uses: actions/cache@v3
         with:
-          path: last_upstream_tag  # 缓存文件路径（存储上次的标签）
-          key: ${{ runner.os }}-upstream-tag  # 缓存键名
+          path: last_upstream_tag
+          key: ${{ runner.os }}-upstream-tag
 
-      ########################################################################
-      # 步骤4：对比标签，若有新Release则创建并推送标签（触发release.yml）
-      ########################################################################
       - name: 检测到新Release，触发自己的release.yml
         if: steps.get_upstream_release.outputs.upstream_tag != '' && steps.get_upstream_release.outputs.upstream_tag != steps.cache_last_tag.outputs.cache-hit
         env:
-          NEW_TAG: ${{ steps.get_upstream_release.outputs.upstream_tag }}  # 原仓库的新标签（如v1.2.3）
+          NEW_TAG: ${{ steps.get_upstream_release.outputs.upstream_tag }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. 检查自己的仓库是否已存在该标签（避免重复创建）
           if git show-ref --verify --quiet "refs/tags/$NEW_TAG"; then
-            echo "自己的仓库已存在标签 $NEW_TAG，无需重复创建"
+            echo "标签 $NEW_TAG 已存在"
           else
-            # 2. 创建标签（与原仓库Release标签一致）
             git config --global user.name "GitHub Actions"
             git config --global user.email "actions@github.com"
             git tag -a $NEW_TAG -m "同步原仓库Release: $NEW_TAG"
-            # 3. 推送标签到自己的仓库（触发release.yml）
             git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git $NEW_TAG
-            echo "已推送标签 $NEW_TAG，触发 release.yml 工作流"
           fi
 
-      ########################################################################
-      # 步骤5：更新缓存（将本次检测到的标签存入缓存，供下次对比）
-      ########################################################################
-      - name: 更新标签缓存（记录本次检测到的标签）
+      - name: 更新标签缓存
         if: steps.get_upstream_release.outputs.upstream_tag != ''
         run: |
           echo "${{ steps.get_upstream_release.outputs.upstream_tag }}" > last_upstream_tag
