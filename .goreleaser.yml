@@ -69,14 +69,15 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 
-# 新增：配置GitHub Release生成 使用v2版本的release和publishers配置
 release:
+  # 移除repo字段：GoReleaser会自动从环境变量获取当前仓库
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
-    repo: "{{ .ProjectName }}"
   draft: false
   prerelease: false
-  generate_release_notes: true
+  # 移除generate_release_notes：改用changelog.generate
+  changelog:
+    generate: true  # 替代原generate_release_notes
 
 snapshot:
   version_template: "{{ incpatch .Version }}-devel"
