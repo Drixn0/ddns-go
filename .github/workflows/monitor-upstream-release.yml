@@ -39,17 +39,21 @@ jobs:
       - name: 检测到新Release，触发自己的release.yml
         if: steps.get_upstream_release.outputs.upstream_tag != '' && steps.get_upstream_release.outputs.upstream_tag != steps.cache_last_tag.outputs.cache-hit
         env:
-          NEW_TAG: ${{ steps.get_upstream_release.outputs.upstream_tag }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            UPSTREAM_TAG: ${{ steps.get_upstream_release.outputs.upstream_tag }}
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if git show-ref --verify --quiet "refs/tags/$NEW_TAG"; then
-            echo "标签 $NEW_TAG 已存在"
-          else
+            # 生成衍生标签（如 upstream_tag=v1.2.3 → NEW_TAG=v1.2.3-sync-$(date +%Y%m%d%H%M)）
+            NEW_TAG="${UPSTREAM_TAG}-sync-$(date +%Y%m%d%H%M)"
+            # 检查衍生标签是否存在（几乎不会重复）
+            if git show-ref --verify --quiet "refs/tags/$NEW_TAG"; then
+            echo "衍生标签 $NEW_TAG 已存在，跳过"
+            else
             git config --global user.name "GitHub Actions"
             git config --global user.email "actions@github.com"
-            git tag -a $NEW_TAG -m "同步原仓库Release: $NEW_TAG"
+            git tag -a $NEW_TAG -m "同步原仓库Release: $UPSTREAM_TAG（衍生标签）"
             git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git $NEW_TAG
-          fi
+            echo "已推送衍生标签 $NEW_TAG，将触发 release.yml"
+            fi
 
       - name: 更新标签缓存
         if: steps.get_upstream_release.outputs.upstream_tag != ''
