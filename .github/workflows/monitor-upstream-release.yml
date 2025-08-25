@@ -18,8 +18,8 @@ jobs:
       - name: 获取原仓库最新Release标签
         id: get_upstream_release
         env:
-          UPSTREAM_OWNER: '原仓库拥有者'  # 替换为实际值
-          UPSTREAM_REPO: '原仓库名'       # 替换为实际值
+          UPSTREAM_OWNER: 'jeessy2'  # 替换为实际值
+          UPSTREAM_REPO: 'ddns-go'       # 替换为实际值
         run: |
           RESPONSE=$(curl -s "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
           UPSTREAM_TAG=$(echo "$RESPONSE" | jq -r '.tag_name')
