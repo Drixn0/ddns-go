@@ -1,14 +1,10 @@
-# This is an example goreleaser.yaml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
-
 version: 2
 
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod download
-    # you may remove this if you don't need go generate
     - go generate ./...
+
 builds:
   - env:
       - CGO_ENABLED=0
@@ -37,7 +33,6 @@ builds:
       - hardfloat
       - softfloat
     ignore:
-      # we only need the arm64 build on android
       - goos: android
         goarch: arm
       - goos: android
@@ -51,11 +46,9 @@ builds:
         - sh -c 'test -d zoneinfo || cp -r /usr/share/zoneinfo .'
 
 archives:
-  # use zip for windows archives
   - format_overrides:
       - goos: windows
         format: zip
-    # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -69,16 +62,13 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 
-# 发布配置
 release:
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
   draft: false
   prerelease: false
 
-# 全局唯一的changelog配置（包含自动生成和过滤规则）
 changelog:
-  generate: true  # 自动生成Release说明
   sort: asc
   filters:
     exclude:
@@ -88,8 +78,7 @@ changelog:
 publishers:
   - name: github
     ids: [default]
-    uses: github
-    with:
+    github:
       files:
         - "dist/*.tar.gz"
         - "dist/*.zip"
