@@ -98,9 +98,6 @@ publishers:
 snapshot:
   version_template: "{{ incpatch .Version }}-devel"
 
-snapshot:
-  version_template: "{{ incpatch .Version }}-devel"
-
 dockers:
   - image_templates:
       - "{{ .Env.DOCKER_USERNAME }}/ddns-go:{{ .Tag }}-amd64"
