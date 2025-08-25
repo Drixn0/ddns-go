@@ -69,29 +69,37 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 
+# 发布配置
 release:
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
   draft: false
   prerelease: false
 
-# 全局changelog配置（包含自动生成功能）
+# 全局唯一的changelog配置（包含自动生成和过滤规则）
 changelog:
-  generate: true  # 自动生成Release说明（替代原release.changelog.generate）
+  generate: true  # 自动生成Release说明
   sort: asc
   filters:
     exclude:
       - '^docs:'
       - '^test:'
 
+publishers:
+  - name: github
+    ids: [default]
+    uses: github
+    with:
+      files:
+        - "dist/*.tar.gz"
+        - "dist/*.zip"
+        - "dist/checksums.txt"
+
 snapshot:
   version_template: "{{ incpatch .Version }}-devel"
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-devel"
 
 dockers:
   - image_templates:
