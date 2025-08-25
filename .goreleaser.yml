@@ -68,6 +68,22 @@ archives:
 
 checksum:
   name_template: 'checksums.txt'
+
+# 新增：配置GitHub Release生成
+releases:
+  - github:
+      # 自动获取当前仓库信息（无需手动修改）
+      owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+      repo: "{{ .ProjectName }}"
+    draft: false  # 不生成草稿（自动发布）
+    prerelease: false  # 标记为正式发布（非预发布）
+    generate_release_notes: true  # 自动从Commit生成发布说明
+    # 上传归档文件和校验和到Release
+    assets:
+      - glob: "dist/*.tar.gz"
+      - glob: "dist/*.zip"
+      - glob: "dist/checksums.txt"
+
 snapshot:
   version_template: "{{ incpatch .Version }}-devel"
 changelog:
@@ -90,7 +106,7 @@ dockers:
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
-    
+
   - image_templates:
       - "{{ .Env.DOCKER_USERNAME }}/ddns-go:{{ .Tag }}-arm64"
       - "ghcr.io/{{ tolower .Env.GITHUB_REPOSITORY }}:{{ .Tag }}-arm64"
@@ -126,7 +142,7 @@ docker_manifests:
       - "{{ .Env.DOCKER_USERNAME }}/ddns-go:{{ .Tag }}-amd64"
       - "{{ .Env.DOCKER_USERNAME }}/ddns-go:{{ .Tag }}-arm64"
       - "{{ .Env.DOCKER_USERNAME }}/ddns-go:{{ .Tag }}-armv7"
-    
+
   - name_template: "{{ .Env.DOCKER_USERNAME }}/ddns-go:latest"
     image_templates:
       - "{{ .Env.DOCKER_USERNAME }}/ddns-go:{{ .Tag }}-amd64"
@@ -138,7 +154,7 @@ docker_manifests:
       - "ghcr.io/{{ tolower .Env.GITHUB_REPOSITORY }}:{{ .Tag }}-amd64"
       - "ghcr.io/{{ tolower .Env.GITHUB_REPOSITORY }}:{{ .Tag }}-arm64"
       - "ghcr.io/{{ tolower .Env.GITHUB_REPOSITORY }}:{{ .Tag }}-armv7"
-    
+
   - name_template: "ghcr.io/{{ tolower .Env.GITHUB_REPOSITORY }}:latest"
     image_templates:
       - "ghcr.io/{{ tolower .Env.GITHUB_REPOSITORY }}:{{ .Tag }}-amd64"
