@@ -8,12 +8,14 @@ jobs:
   monitor-and-trigger:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 必须有此权限才能推送标签
+      contents: write
+      actions: write  # 新增：允许触发其他工作流的权限
     steps:
       - name: 检出仓库
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # 拉取完整历史，确保能检查标签
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: 获取原仓库最新Release标签
         id: get_upstream_release
@@ -23,7 +25,6 @@ jobs:
         run: |
           RESPONSE=$(curl -s "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
           UPSTREAM_TAG=$(echo "$RESPONSE" | jq -r '.tag_name')
-          # 严格验证标签格式（仅保留v开头的版本号）
           if [[ $UPSTREAM_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
             echo "upstream_tag=$UPSTREAM_TAG" >> $GITHUB_OUTPUT
           else
@@ -37,33 +38,37 @@ jobs:
           path: last_upstream_tag
           key: ${{ runner.os }}-upstream-tag
 
-      - name: 检测到新Release，生成并推送新标签
+      - name: 生成并推送新标签
+        id: push_tag
         if: steps.get_upstream_release.outputs.upstream_tag != '' && steps.get_upstream_release.outputs.upstream_tag != steps.cache_last_tag.outputs.cache-hit
         env:
           UPSTREAM_TAG: ${{ steps.get_upstream_release.outputs.upstream_tag }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 生成唯一标签：原标签 + 同步时间戳（确保每次都是新标签）
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)  # 精确到秒，避免重复
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
           NEW_TAG="${UPSTREAM_TAG}-sync-${TIMESTAMP}"
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_OUTPUT  # 输出标签名供后续步骤使用
 
-          # 再次检查标签是否存在（双重保险）
-          if git show-ref --verify --quiet "refs/tags/$NEW_TAG"; then
-            echo "标签 $NEW_TAG 已存在，跳过"
-            exit 0
-          fi
-
-          # 配置Git用户信息
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
+          git tag -a "$NEW_TAG" -m "同步原仓库Release: $UPSTREAM_TAG"
+          git push origin "$NEW_TAG"
+          echo "已推送新标签: $NEW_TAG"
 
-          # 创建带注释的标签
-          git tag -a "$NEW_TAG" -m "同步原仓库Release: $UPSTREAM_TAG（自动同步于 $TIMESTAMP）"
-
-          # 推送标签（使用token授权，确保权限）
-          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$NEW_TAG"
-
-          echo "已推送新标签: $NEW_TAG，应触发 release.yml"
+      - name: 强制触发 release.yml 工作流
+        if: steps.push_tag.outputs.NEW_TAG != ''  # 仅当新标签推送成功时触发
+        env:
+          NEW_TAG: ${{ steps.push_tag.outputs.NEW_TAG }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 通过 GitHub API 直接触发 release.yml，指定新标签作为参数
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/release.yml/dispatches" \
+            -d '{"ref":"'"$NEW_TAG"'"}'
+          echo "已强制触发 release.yml，使用标签: $NEW_TAG"
 
       - name: 更新标签缓存
         if: steps.get_upstream_release.outputs.upstream_tag != ''
