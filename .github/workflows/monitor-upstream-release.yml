@@ -1,19 +1,19 @@
 name: 监测原仓库新Release并触发发布
 on:
-  schedule:  # 注意：定时任务必须放在 schedule 字段下，而非直接写 cron
-    - cron: '0 * * * *'  # 每小时检查一次（正确缩进：比 on 多 2 个空格）
-  workflow_dispatch:  # 允许手动触发（与 schedule 同级）
+  schedule:
+    - cron: '0 * * * *'  # 每小时检查一次
+  workflow_dispatch:  # 允许手动测试
 
 jobs:
   monitor-and-trigger:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # 必须有此权限才能推送标签
     steps:
       - name: 检出仓库
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # 拉取完整历史，确保能检查标签
 
       - name: 获取原仓库最新Release标签
         id: get_upstream_release
@@ -23,6 +23,7 @@ jobs:
         run: |
           RESPONSE=$(curl -s "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
           UPSTREAM_TAG=$(echo "$RESPONSE" | jq -r '.tag_name')
+          # 严格验证标签格式（仅保留v开头的版本号）
           if [[ $UPSTREAM_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
             echo "upstream_tag=$UPSTREAM_TAG" >> $GITHUB_OUTPUT
           else
@@ -36,24 +37,33 @@ jobs:
           path: last_upstream_tag
           key: ${{ runner.os }}-upstream-tag
 
-      - name: 检测到新Release，触发自己的release.yml
+      - name: 检测到新Release，生成并推送新标签
         if: steps.get_upstream_release.outputs.upstream_tag != '' && steps.get_upstream_release.outputs.upstream_tag != steps.cache_last_tag.outputs.cache-hit
         env:
-            UPSTREAM_TAG: ${{ steps.get_upstream_release.outputs.upstream_tag }}
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_TAG: ${{ steps.get_upstream_release.outputs.upstream_tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-            # 生成衍生标签（如 upstream_tag=v1.2.3 → NEW_TAG=v1.2.3-sync-$(date +%Y%m%d%H%M)）
-            NEW_TAG="${UPSTREAM_TAG}-sync-$(date +%Y%m%d%H%M)"
-            # 检查衍生标签是否存在（几乎不会重复）
-            if git show-ref --verify --quiet "refs/tags/$NEW_TAG"; then
-            echo "衍生标签 $NEW_TAG 已存在，跳过"
-            else
-            git config --global user.name "GitHub Actions"
-            git config --global user.email "actions@github.com"
-            git tag -a $NEW_TAG -m "同步原仓库Release: $UPSTREAM_TAG（衍生标签）"
-            git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git $NEW_TAG
-            echo "已推送衍生标签 $NEW_TAG，将触发 release.yml"
-            fi
+          # 生成唯一标签：原标签 + 同步时间戳（确保每次都是新标签）
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)  # 精确到秒，避免重复
+          NEW_TAG="${UPSTREAM_TAG}-sync-${TIMESTAMP}"
+
+          # 再次检查标签是否存在（双重保险）
+          if git show-ref --verify --quiet "refs/tags/$NEW_TAG"; then
+            echo "标签 $NEW_TAG 已存在，跳过"
+            exit 0
+          fi
+
+          # 配置Git用户信息
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # 创建带注释的标签
+          git tag -a "$NEW_TAG" -m "同步原仓库Release: $UPSTREAM_TAG（自动同步于 $TIMESTAMP）"
+
+          # 推送标签（使用token授权，确保权限）
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$NEW_TAG"
+
+          echo "已推送新标签: $NEW_TAG，应触发 release.yml"
 
       - name: 更新标签缓存
         if: steps.get_upstream_release.outputs.upstream_tag != ''
