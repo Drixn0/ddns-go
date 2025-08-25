@@ -70,14 +70,19 @@ checksum:
   name_template: 'checksums.txt'
 
 release:
-  # 移除repo字段：GoReleaser会自动从环境变量获取当前仓库
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
   draft: false
   prerelease: false
-  # 移除generate_release_notes：改用changelog.generate
-  changelog:
-    generate: true  # 替代原generate_release_notes
+
+# 全局changelog配置（包含自动生成功能）
+changelog:
+  generate: true  # 自动生成Release说明（替代原release.changelog.generate）
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
 
 snapshot:
   version_template: "{{ incpatch .Version }}-devel"
