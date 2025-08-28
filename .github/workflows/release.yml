@@ -1,24 +1,23 @@
-name: release
+name: Sync Release and Push Event Trigger
 
 on:
   push:
-    # Sequence of patterns matched against refs/tags
+    # 监听版本标签的推送事件
     tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - 'v*'  # 例如 v1.0, v20.15.10
 
-permissions:
-  contents: write
-  packages: write
+  workflow_run:
+    workflows: ["release"]  # 监听原仓库的 release 工作流完成
+    types:
+      - completed
+    repository: https://github.com/jeessy2/ddns-go  # 原仓库的路径
 
 jobs:
-  goreleaser:
-    name: Build
+  sync_release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -46,7 +45,7 @@ jobs:
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')  # 确保只在标签事件触发时运行
         with:
           distribution: goreleaser
           version: latest
